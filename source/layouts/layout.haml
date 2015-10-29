@@ -1,5 +1,5 @@
 !!!
-%html
+%html(ng-app='app')
   %head
     %meta{:content => "text/html; charset=UTF-8", "http-equiv" => "Content-Type"}/
     %meta{:charset => "utf-8"}/
@@ -15,4 +15,4 @@
     %script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js")
     %script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.7/angular.js")
     %script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js")
-    = inline_javascript  "all"
+    = inline_javascript  "app"
