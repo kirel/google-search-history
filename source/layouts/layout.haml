@@ -8,11 +8,13 @@
     / Use title if it's in the page YAML frontmatter
     %title= current_page.data.title || "The Middleman"
     = inline_stylesheet "normalize"
+    %link(rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/nvd3/1.8.1/nv.d3.min.css')
     = inline_stylesheet "all"
   %body{:class => page_classes}
     = yield
     %script(type='text/javascript' src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.js")
     %script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js")
     %script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.7/angular.js")
-    %script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js")
+    %script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.js")
+    %script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/nvd3/1.8.1/nv.d3.js")
     = inline_javascript  "app"

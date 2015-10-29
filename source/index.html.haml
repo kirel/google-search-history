@@ -1,5 +1,19 @@
 #dropzone(dropzone events='events')
   Drop files here
-%output#list(event-list events='events')
-%code#json
+#tool
+  #search(search-box search='search' searches='searches')
+  #search-list(search-list searches='searches' events='events')
+  #list(event-list events='events')
 
+// Templates for directives here
+
+%script(type='text/ng-template' id='search')
+  %input(type='text' ng-model='term')
+  %button#add search
+  {{term}}
+
+%script(type='text/ng-template' id='search-list')
+  %ul
+    %li(ng-repeat='search in searches')
+      %h2 {{search.term}}
+      .term-viz(term-viz search='search' events='events')
