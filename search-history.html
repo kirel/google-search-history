@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Google Search History</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-MfvZlkHCEqatNoGiOXveE8FIwMzZg4W85qfrfIFBfYc= sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+  </head>
+  <body>
+    <div id="drop_zone">Drop files here</div>
+    <output id="list"></output>
+    <code id="json"></code>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.7/angular.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js" integrity="sha256-Sk3nkD6mLTMOF0EOpNtsIry+s1CsaqQC1rVLTAy+0yc= sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+
+    <script>
+      function readFile(file) {
+          var reader = new FileReader();
+          var deferred = $.Deferred();
+
+          reader.onload = function(event) {
+              deferred.resolve(event.target.result);
+          };
+
+          reader.onerror = function() {
+              deferred.reject(this);
+          };
+
+          if (/^image/.test(file.type)) {
+              reader.readAsDataURL(file);
+          } else {
+              reader.readAsText(file);
+          }
+
+          return deferred.promise();
+      }
+
+      function handleFileSelect(evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+
+        var files = evt.dataTransfer.files; // FileList object.
+
+        // files is a FileList of File objects. List some properties.
+        var output = [];
+        var jsons = [];
+        _.each(files, function(f) {
+          output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
+                      f.size, ' bytes, last modified: ',
+                      f.lastModifiedDate.toLocaleDateString(), '</li>');
+          jsons.push(readFile(f))
+        });
+        document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
+        var events;
+        $.when.apply($, jsons).then(function() {
+          jsons = arguments
+          events = _.reduce(jsons, function(res, json) {
+            res.push.apply(res, JSON.parse(json).event);
+            return res;
+          }, []);
+          document.getElementById('list').innerHTML = JSON.stringify(events);
+        });
+      }
+
+      function handleDragOver(evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+        evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+      }
+
+      // Setup the dnd listeners.
+      var dropZone = document.getElementById('drop_zone');
+      dropZone.addEventListener('dragover', handleDragOver, false);
+      dropZone.addEventListener('drop', handleFileSelect, false);
+
+
+    </script>
+  </body>
+</html>
+
