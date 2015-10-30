@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html ng-app='app'>
   <head>
     <meta content='text/html; charset=UTF-8' http-equiv='Content-Type'>
     <meta charset='utf-8'>
@@ -384,6 +384,7 @@
         border-spacing: 0;
     }
     </style>
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/nvd3/1.8.1/nv.d3.min.css' rel='stylesheet'>
     <style>/* line 1, /Users/danielkirsch/code/google-history/source/stylesheets/base/_buttons.scss */
     button, input[type="button"], input[type="reset"], input[type="submit"] {
       appearance: none;
@@ -603,91 +604,222 @@
     *, *::after, *::before {
       box-sizing: inherit; }
     
-    /* line 11, /Users/danielkirsch/code/google-history/source/stylesheets/all.css.sass */
+    /* line 7, /Users/danielkirsch/code/google-history/source/stylesheets/all.css.sass */
+    * {
+      box-sizing: border-box; }
+    
+    /* line 14, /Users/danielkirsch/code/google-history/source/stylesheets/all.css.sass */
     body {
       height: 100%;
       background-color: lightgray; }
     
-    /* line 15, /Users/danielkirsch/code/google-history/source/stylesheets/all.css.sass */
+    /* line 18, /Users/danielkirsch/code/google-history/source/stylesheets/all.css.sass */
     #dropzone {
-      width: 100%;
-      height: 100%;
+      width: calc(100vw - 20px);
+      height: calc(50vh - 20px);
       text-align: center;
       padding: 10px;
-      margin: 10px;
+      margin: 10px auto;
       background-color: white;
       border-radius: 5px;
       border: 2px gray dashed; }
-      /* line 24, /Users/danielkirsch/code/google-history/source/stylesheets/all.css.sass */
+      /* line 27, /Users/danielkirsch/code/google-history/source/stylesheets/all.css.sass */
       #dropzone:hover {
         border-color: #9a9a9a; }
     </style>
   </head>
   <body class='index'>
-    <div id='dropzone'>
+    <div dropzone events='events' id='dropzone'>
       Drop files here
     </div>
-    <output id='list'></output>
-    <code id='json'></code>
+    <div id='tool'>
+      <div id='search' search-box search='search' searches='searches'></div>
+      <div events='events' id='search-list' search-list searches='searches'></div>
+      <div event-list events='events' id='list'></div>
+    </div>
+    <!-- / Templates for directives here -->
+    <script id='search' type='text/ng-template'>
+      <input ng-model='term' type='text'>
+      <button id='add'>search</button>
+      {{term}}
+    </script>
+    <script id='search-list' type='text/ng-template'>
+      <ul>
+        <li ng-repeat='search in searches'>
+          <h2>{{search.term}}</h2>
+          <div class='term-viz' events='events' search='search' term-viz></div>
+        </li>
+      </ul>
+    </script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.js' type='text/javascript'></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.10.1/lodash.min.js' type='text/javascript'></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.7/angular.js' type='text/javascript'></script>
-    <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js' type='text/javascript'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.js' type='text/javascript'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/nvd3/1.8.1/nv.d3.js' type='text/javascript'></script>
     <script>(function() {
-      var dropZone, handleDragOver, handleFileSelect, readFile;
+      angular.module('app', []);
     
-      dropZone = document.getElementById('dropzone');
-    
-      readFile = function(file) {
-        var deferred, reader;
-        reader = new FileReader;
-        deferred = $.Deferred();
-        reader.onload = function(event) {
-          deferred.resolve(event.target.result);
+      angular.module('app').directive('eventList', function() {
+        return {
+          scope: {
+            events: '='
+          },
+          link: function(scope, elem, attr) {
+            return scope.$watchCollection('events', function(events) {
+              return elem.html(JSON.stringify(events));
+            });
+          }
         };
-        reader.onerror = function() {
-          deferred.reject(this);
+      });
+    
+    }).call(this);
+    (function() {
+      angular.module('app').directive('dropzone', function($q) {
+        return {
+          scope: {
+            events: '='
+          },
+          link: function(scope, elem, attr) {
+            var dropZone, handleDragOver, handleFileSelect, readFile;
+            scope.$watchCollection('events', function(events) {
+              if (events != null ? events.length : void 0) {
+                return elem.hide();
+              } else {
+                return elem.show();
+              }
+            });
+            dropZone = elem;
+            readFile = function(file) {
+              var deferred, reader;
+              reader = new FileReader;
+              deferred = $q.defer();
+              reader.onload = function(event) {
+                deferred.resolve(event.target.result);
+              };
+              reader.onerror = function() {
+                deferred.reject(this);
+              };
+              if (/^image/.test(file.type)) {
+                reader.readAsDataURL(file);
+              } else {
+                reader.readAsText(file);
+              }
+              return deferred.promise;
+            };
+            handleFileSelect = function(evt) {
+              var events, f, files, jsons;
+              evt.stopPropagation();
+              evt.preventDefault();
+              files = evt.originalEvent.dataTransfer.files;
+              jsons = (function() {
+                var i, len, results;
+                results = [];
+                for (i = 0, len = files.length; i < len; i++) {
+                  f = files[i];
+                  results.push(readFile(f));
+                }
+                return results;
+              })();
+              events = void 0;
+              return $q.all(jsons).then(function(jsons) {
+                events = _.reduce(jsons, (function(res, json) {
+                  res.push.apply(res, JSON.parse(json).event);
+                  return res;
+                }), []);
+                return scope.events = events;
+              });
+            };
+            handleDragOver = function(evt) {
+              evt.stopPropagation();
+              evt.preventDefault();
+              return evt.originalEvent.dataTransfer.dropEffect = 'copy';
+            };
+            dropZone.on('dragover', handleDragOver);
+            return dropZone.on('drop', handleFileSelect);
+          }
         };
-        if (/^image/.test(file.type)) {
-          reader.readAsDataURL(file);
-        } else {
-          reader.readAsText(file);
-        }
-        return deferred.promise();
-      };
+      });
     
-      handleFileSelect = function(evt) {
-        var events, files, jsons, output;
-        evt.stopPropagation();
-        evt.preventDefault();
-        files = evt.dataTransfer.files;
-        output = [];
-        jsons = [];
-        _.each(files, function(f) {
-          output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ', f.size, ' bytes, last modified: ', f.lastModifiedDate.toLocaleDateString(), '</li>');
-          jsons.push(readFile(f));
-        });
-        document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
-        events = void 0;
-        $.when.apply($, jsons).then(function() {
-          jsons = arguments;
-          events = _.reduce(jsons, (function(res, json) {
-            res.push.apply(res, JSON.parse(json).event);
-            return res;
-          }), []);
-          document.getElementById('list').innerHTML = JSON.stringify(events);
-        });
-      };
+    }).call(this);
+    (function() {
+      angular.module('app').directive('searchBox', function() {
+        return {
+          scope: {
+            search: '=',
+            searches: '='
+          },
+          templateUrl: 'search',
+          link: function(scope, elem, attr) {
+            scope.searches = [];
+            scope.search = '';
+            return elem.find('#add').on('click', function() {
+              return scope.$apply(function() {
+                return scope.searches.push({
+                  term: scope.term
+                });
+              });
+            });
+          }
+        };
+      });
     
-      handleDragOver = function(evt) {
-        evt.stopPropagation();
-        evt.preventDefault();
-        evt.dataTransfer.dropEffect = 'copy';
-      };
+      angular.module('app').directive('searchList', function() {
+        return {
+          scope: {
+            searches: '=',
+            events: '='
+          },
+          templateUrl: 'search-list',
+          link: function(scope, elem, attr) {}
+        };
+      });
     
-      dropZone.addEventListener('dragover', handleDragOver, false);
-    
-      dropZone.addEventListener('drop', handleFileSelect, false);
+      angular.module('app').directive('termViz', function() {
+        return {
+          scope: {
+            search: '=',
+            events: '='
+          },
+          template: '<svg></svg>',
+          link: function(scope, elem, attr) {
+            var chart;
+            chart = nv.models.discreteBarChart().x(function(d) {
+              return d.x;
+            }).y(function(d) {
+              return d.y;
+            });
+            return scope.$watchCollection('events', function(events) {
+              var data, event, filteredEvents, re, timestamps;
+              if (!events) {
+                return;
+              }
+              chart.xRange([0, 100]);
+              re = new RegExp(scope.search.term, 'i');
+              filteredEvents = _.filter(events, function(event) {
+                return event.query.query_text.search(re) !== -1;
+              });
+              console.log(scope.search);
+              console.log(filteredEvents);
+              timestamps = (function() {
+                var i, len, results;
+                results = [];
+                for (i = 0, len = filteredEvents.length; i < len; i++) {
+                  event = filteredEvents[i];
+                  results.push(parseInt(event.query.id[0].timestamp_usec));
+                }
+                return results;
+              })();
+              data = [
+                {
+                  values: d3.layout.histogram()(timestamps)
+                }
+              ];
+              chart = nv.models.multiBarChart();
+              return d3.select(elem.find('svg')[0]).datum(data).call(chart);
+            });
+          }
+        };
+      });
     
     }).call(this);
     </script>
